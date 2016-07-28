@@ -1,0 +1,7 @@
+The work of Betq-GO: 
+
+1. Understand the bluepritn concept, split the web app structure into API, Pages
+
+2. Create framework of calculating and store data for health calculation
+
+3.  
