@@ -1,0 +1,14 @@
+<form action="/posting" method="post" name="posting">
+  {{ form.hidden_tag() }}
+  <p>
+  {{ _('Your Posting:') }}<br>
+    {{ form.posting(size=140) }} <br>
+    {% for error in form.posting.errors %}
+      <span style="color: red;">[{{ error }}]</span>
+    {% endfor %}
+  </p>
+  <p>
+  <input type="submit" value="{{ _('Post') }}">
+    <input type=hidden value="{{ next or ' ' }}" name=next>
+  </p>
+</form> 

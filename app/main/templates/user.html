@@ -1,0 +1,25 @@
+<!-- extends from base -->
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>User: {{ user.nickname }} </h1>
+  {% if user.about_me %}<p>{{ user.about_me }}</p> {% endif %}
+  {% if user.last_seen %}<p>{{ _('Last seen at: %(when)', when=momentjs(user.last_seen).calendar()) }}</P> {% endif %}
+  <p> {{ user.followers.count() }} {{ _('followers') }}|
+  {% if user.id == g.user.id %}
+  <a href = '{{ url_for('edit') }}'>{{ _('Edit') }}</a>
+  {% elif g.user.is_following(user) %}
+  <a href = "{{ url_for('unfollow', nickname = user.nickname) }}">{{ _('Unfollow') }}</a>
+  {% else %}
+  <a href = "{{ url_for('follow', nickname = user.nickname) }}">{{ _('Follow') }}</a>
+  {% endif %}
+  </p>
+  <hr>
+  {% include 'posting.html' ignore missing %}
+  {% include 'post.html' ignore missing %}
+  <p>
+  {% if posts.has_prev %}<a href = "{{ url_for('user_page', nickname=user.nickname, page=posts.prev_num) }}">&lt;&lt; {{ _('Newer Posts') }}</a>{% else %}&lt;&lt; {{ _('Newer Posts') }}{% endif %} | 
+  {% if posts.has_next %}<a href = "{{ url_for('user_page', nickname=user.nickname, page=posts.next_num) }}">{{ _('Older Posts') }} &gt;&gt;</a>{% else %}{{ _('Older Posts') }} &gt;&gt;{% endif %}
+  </p>
+{% endblock %} 
+

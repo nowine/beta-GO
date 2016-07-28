@@ -1,0 +1,17 @@
+<!-- extend from base layout -->
+{% extends "base.html" %}
+{% block content %}
+{% from "_formhelper.html" import render_field %}
+  <h1>Register</h1>
+  <form action="" method="post" name="{{ _('Register') }}">
+    {{ form.hidden_tag() }} 
+    <dl>
+      {{ render_field(form.nickname) }}
+      {{ render_field(form.passwd) }}
+      {{ render_field(form.passwd_conf) }}
+      {{ render_field(form.email) }}
+    </dl>
+    <p><input type="submit" value="{{ _('Sign up') }}"></p>
+
+  </from>
+{% endblock %}

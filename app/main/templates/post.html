@@ -1,0 +1,13 @@
+{% autoescape false %}
+  {% for post in posts.items %}
+  <p>
+  <!-- <a href = "{{ url_for('user_page', nickname = post.author.nickname) }}">{{ post.author.nickname }}</a> says {{ momentjs(post.creation_time).fromNow() }} : <b>{{ post.body }}</b> --> 
+  {{ _(' %(name)s said %(when)s: ',
+         name = '<a href = "%s">%s</a>' % (url_for('user_page', nickname = post.author.nickname), post.author.nickname),  
+         when = momentjs(post.creation_time).fromNow()) }} 
+  <b>{{ post.body }}</b>  
+  </p>
+  {% else %}
+  <p> {{ _('The user hasn\'t post anything') }} </p>
+  {% endfor %}
+{% endautoescape %}
