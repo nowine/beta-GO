@@ -15,7 +15,7 @@ def assess(username):
 
 @api.route('/questionnaire/<key>', methods=['GET'])
 def questionnaire_summary(key):
-    qn = Questionnaire.query.filter_by(key = key).first()
+    qn = Questionnaire.query.filter_by(key=key).first()
     return jsonify({ 'Questionnaire': qn.to_dict() })
 
 @api.route('/questionnaire/<key>/questions', methods=['GET'])

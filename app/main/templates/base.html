@@ -16,14 +16,7 @@
     <body>
       <div class="container">
         <div class="navbar">
-            <div>Microblog: <a href="{{ url_for('index') }}">{{ _('Home') }}</a>  
-              {% if g.user.is_authenticated %}
-              | <a href="{{ url_for('user_page', nickname=g.user.nickname) }}">{{ _('Your Profile') }}</a>
-              | <a href="{{ url_for('logout') }}">{{ _('Logout') }}</a>
-              {% else %}
-              | <a href="/login">{{ _('Login') }}</a> 
-              | <a href="/register">{{ _('Register') }}</a>
-              {% endif %}
+          <div>beta-Go: 
           </div>
           <hr>
           {% with messages = get_flashed_messages() %}

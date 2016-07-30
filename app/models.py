@@ -1,5 +1,5 @@
 from app import db
-
+import json
 
 class User(db.Model):
     __tablename__ = 'user'
@@ -62,9 +62,18 @@ class Questions(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, index=True)
     body = db.Column(db.UnicodeText)
-    answers = db.Column(db.UnicodeText)
-    # Assume the option-score map would be stored as json string
+    _answers = db.Column(db.UnicodeText)
 
+    @property
+    def answers(self):
+        d = json.loads(self._answers)
+        return d
+
+    @answers.setter
+    def answers(self, dict):
+        self._answers = json.dumps(dict)
+
+    # Assume the option-score map would be stored as json string
     def __init__(self, *args, **kwargs):
         super(Questions, self).__init__(*args, **kwargs)
 
