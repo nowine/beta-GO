@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from app import db
 import json
 
@@ -54,15 +56,23 @@ class quest_asso(db.Model):
 
 
 class Questions(db.Model):
-    # Definning the qeustionnaire structure
-    # This class used to store the question settings, with Question body,
-    # choices/rating mapping
-    # choices/rating mapping would stored as JSON text
+    """Definning the qeustionnaire structure
+    This class used to store the question settings, with Question body,
+    key for searching the question, and also type of the question answers,
+    the answers column is optionnal, only useful when the type_code is
+    `SELECT_ANSWER_TYPE`, the choices/rating mapping would stored in answers field
+    in JSON format
+    """
     __tablename__ = 'qn'
+    SELECT_ANSWER_TYPE = 1
+    BOOLEAN_ANSWER_TYPE = 2
+    VALUE_ANSWER_TYPE = 3
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, index=True)
+    type_code = db.Column(db.Integer)
     body = db.Column(db.UnicodeText)
-    _answers = db.Column(db.UnicodeText)
+    _answers = db.Column(db.UnicodeText, nullable=True)
+    dependencies = db.relationship('Quest_Dependency')
 
     @property
     def answers(self):
@@ -87,16 +97,47 @@ class Questions(db.Model):
         d = {
             'key': self.key,
             'body': self.body,
+            'type_code': self.type_code,
             'answers': self.answers
         }
         return d
 
+    def is_required(self, qnr, answer_dict):
+        """The function will be used to check whether the question is required.
+        It will run through the dependency relation of the question record and
+        calculate until a true is received. If the no dependency record found,
+        by default we can take it as true."""
+        # 这个方法暂时无法满足所有情形，比如一个问题1在问卷A中依赖于问题2，
+        # 但在问卷B可能会依赖于问题3，对于某一份问卷，这两个问题都会被筛选，
+        # 但是问卷A中没必要检查问题3. 需要进一步设计将问卷信息一起考虑，包括
+        # 正向过滤（选择当前问卷的内容），和反向过滤（去掉与本次问卷无关的内容）
+        if self.dependencies.count() == 0:
+            return True
+        required = False
+        affected = True
+        hit_dependency = 0
+        for dep in self.dependencies:
+            if dep.is_affecting(qnr):
+                required = required or dep.check_dependency(answer_dict)
+                hit_dependency += 1
+            else:
+                affected = False
+
+        if hit_dependency == 0 and not affected:
+            # 所有Dependency都不影响当前问卷，则Return True
+            return True
+        return required
+            # 有问卷受影响，则对每个Dependency进行 OR
+            # 运算，只要有任意一个问题为真，则 required，
+
 
 class Questionnaire(db.Model):
-    # This class models the controlling information of questionaires, e.g. the version, name, purpose and etc
+    """ This class models the controlling information of questionaires,
+    e.g. the version, name, purpose and etc
+    """
     __tablename__ = 'qnr'
     id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String, index=True)
+    key = db.Column(db.String(10), index=True)
     name = db.Column(db.UnicodeText)
     description = db.Column(db.UnicodeText)
 
@@ -172,3 +213,82 @@ class Questionnaire(db.Model):
              'desc': self.description
             }
         return d
+
+    def get_question(self, sequence, answer_dict=None):
+        if sequence < 1 or sequence > self.questions.count():
+            raise IndexError('Sequence out of range')
+        asso = self.questions.filter_by(
+            quest_asso.sequence >= sequence).order_by(quest_asso.sequence).all()
+        for a in asso:
+            if a.question.is_required():
+                return (a.sequence, a.question)
+
+
+class Quest_Dependency(db.Model):
+    """This class is used to maintenance the dependency whether a questions should
+    be asked. Usually, it depends on the answer previous questions to determine
+    whether to asked the question, or not.
+    As one question might be depends on different questions in different questionnaire,
+    so create a dedicated model to keep such relationship.
+    """
+    __tablename__ = 'qz_depend'
+    GREATER_THAN = 'GT'
+    LESS_THAN = 'LT'
+    EQUAL_TO = 'EQ'
+    NOT_EQAUL_TO = 'NE'
+    GREATER_EQUAL = 'GE'
+    LESS_EQUAL = 'LE'
+    FUNCTION = 'FN'
+    id = db.Column(db.Integer, primary_key=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('qn.id'), index=True)
+    check_method = db.Column(db.String(2))
+    check_value = db.Column(db.String(64))
+    check_against = db.Column(db.String(64))
+    # The check against would be used record which question's answer would be
+    # checked. Not using the question id because expecting get the answer dict
+    # using question's key as the answer key too
+    affected_all = db.Column(db.Boolean)
+    # Assumption, if there is multiple dependency, it should be an `or` logic
+    affected_qnr = db.Column(db.Text, nullable=True)
+
+    def append_qnr(self, qnr_key):
+        if self.affected_qnr is None:
+            self.affected_qnr = qnr_key
+            return self.append_qnr
+        self.affected_qnr = "%s|%s" % (self.affected_qnr, qnr_key)
+        return self.append_qnr
+
+    def is_affecting(self, qnr_key):
+        return self.affected_all or self.affected_qnr.find(qnr_key)
+
+    def check_dependency(self, answer_dict, fn=None):
+        # The method supports equal, not equal and function checking only. For
+        # other checking method, would be implemented in future
+        # Check if the preceding question has been answer, if not then return
+        # False, as we assume the depending question should be asked
+        # previously.
+        if not answer_dict[self.check_against]:
+            return False
+        if self.check_method == self.EQUAL_TO:
+            return answer_dict[self.check_against] == self.check_value
+        if self.check_method == self.NOT_EQUAL_TO:
+            return answer_dict[self.check_against] != self.check_value
+
+
+class Answers(db.Model):
+    __tablename__ = 'answer'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), index=True)
+    questionnaire_id = db.Column(db.Integer, db.ForeignKey('qnr.id'), index=True)
+    user = db.relationship('User', backref=db.backref('answers',
+                                                      lazy='dynamic'))
+    _answers = db.Column(db.UnicodeText)
+
+    @property
+    def answers(self):
+        return json.load(self._answers)
+
+    def add_answer(self, key, value):
+        answers = self.answers
+        answers[key]=value
+        self._answers = json.dump(answers)

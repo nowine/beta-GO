@@ -4,4 +4,7 @@ The work of Betq-GO:
 
 2. Create framework of calculating and store data for health calculation
 
-3.  
+3. Adding logic for more check_method option in Quest_Dependency model.
+
+4. Build admin pages to maitenance questionnaire and questions (CRUD) and relationships
+
