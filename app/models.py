@@ -13,6 +13,23 @@ class User(db.Model):
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
     role = db.relationship('Role')
 
+    def is_authenticated(self):
+        return True
+
+    def is_active(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return self.id
+
+    def __repr__(self):
+        return '<User: %r>' % self.name
+
+
+
 
 class Role(db.Model):
     __tablename__ = 'role'
@@ -286,9 +303,21 @@ class Answers(db.Model):
 
     @property
     def answers(self):
-        return json.load(self._answers)
+        return json.loads(self._answers)
+
+    @answers.setter
+    def answers(self, ans):
+        self._answers = json.dumps(ans)
 
     def add_answer(self, key, value):
         answers = self.answers
         answers[key]=value
-        self._answers = json.dump(answers)
+        self.answers = answers
+
+    def __init__(self, user_id, qnr_id, answers):
+        self.user_id = user_id
+        self.questionnaire_id = qnr_id
+        if answers:
+            self.answers = answers
+        else:
+            self.answers = {}

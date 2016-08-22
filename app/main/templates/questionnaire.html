@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_questionhelper.html" import render_quest %}
+{% block content %}
+<p>{{ qn.name }}</p>
+<p>{{ qn.description }}</p>
+<form action="" method="post" name="{{ qn.key }}">
+<dl>
+    {% for quest in qn.questions %}
+    {{ render_quest(quest) }}
+    {% endfor %}
+</dl>
+<input type="submit" value="提交">
+</form>
+{% endblock %}
+

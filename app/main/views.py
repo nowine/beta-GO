@@ -1,4 +1,4 @@
-from flask import render_template, url_for, request
+from flask import render_template, url_for, request, redirect
 from . import main_pages
 from ..models import Questionnaire, Questions
 
@@ -19,6 +19,4 @@ def load_questions(key):
             for (key, value) in request.form.items():
                 score = score + int(value)
             return render_template('result.html', score=score)
-
-
-
+    return redirect(url_for('/index'))
