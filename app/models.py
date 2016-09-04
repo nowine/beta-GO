@@ -6,12 +6,18 @@ import json
 class User(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), index=True)
+    mobile = db.Column(db.String(15), index=True)
+    name = db.Column(db.String(64))
     age = db.Column(db.Integer)
     gender = db.Column(db.String(1))
-    mobile = db.Column(db.String(15))
     role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
     role = db.relationship('Role')
+
+    def __init__(self, mobile, name, age, gender):
+        self.mobile = mobile
+        self.name = name
+        self.age = age
+        self.gender = gender
 
     def is_authenticated(self):
         return True
@@ -300,6 +306,7 @@ class Answers(db.Model):
     user = db.relationship('User', backref=db.backref('answers',
                                                       lazy='dynamic'))
     _answers = db.Column(db.UnicodeText)
+    result = db.Column(db.UnicodeText)
 
     @property
     def answers(self):

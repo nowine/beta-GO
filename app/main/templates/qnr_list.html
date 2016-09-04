@@ -1,0 +1,9 @@
+<!-- extend base html -->
+{% extends 'base.html' %}
+{% block content %}
+  {% for qnr in qlist %}
+    <h1 small><a href="{{ url_for('main_pages.load_questions', key=qnr.key) }}">{{ qnr.name }}</a></h1 small>
+    <p>{{ qnr.description }}</p>
+    <br>
+  {% endfor %}
+{% endblock %}
