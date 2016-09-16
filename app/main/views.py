@@ -44,3 +44,13 @@ def qnr_list():
     qlist = Questionnaire.query.all()
     return render_template('qnr_list.html', qlist=qlist)
 
+@main_pages.route('/qnr/<key>', methods=['GET'])
+def load_qnr(key):
+    qnr = Questaionnaire.query.filter_by(key=key).first()
+    if qnr:
+        if request.method == 'GET':
+            return render_template('qnr.html', qnr=qnr)
+        if request.method == 'POST':
+            pass
+    flash('该问卷不存在，请重新选择问卷')
+    return redirect(url_for('/index'))

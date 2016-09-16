@@ -117,13 +117,17 @@ class Questions(db.Model):
             return '<Questions (uncreated): %s, % s>' % (self.body, self.answers)
 
     def to_dict(self):
-        d = {
+        dep = []
+        for d in self.dependencies:
+            dep.append(d.to_dict())
+        dic = {
             'key': self.key,
             'body': self.body,
             'type_code': self.type_code,
-            'answers': self.answers
-        }
-        return d
+            'answers': self.answers,
+            'dependencies': dep
+            }
+        return dic
 
     def is_required(self, qnr, answer_dict):
         """The function will be used to check whether the question is required.
@@ -270,7 +274,7 @@ class Quest_Dependency(db.Model):
     # The check against would be used record which question's answer would be
     # checked. Not using the question id because expecting get the answer dict
     # using question's key as the answer key too
-    affected_all = db.Column(db.Boolean)
+    affecting_all = db.Column(db.Boolean)
     # Assumption, if there is multiple dependency, it should be an `or` logic
     affected_qnr = db.Column(db.Text, nullable=True)
 
@@ -282,7 +286,7 @@ class Quest_Dependency(db.Model):
         return self.append_qnr
 
     def is_affecting(self, qnr_key):
-        return self.affected_all or self.affected_qnr.find(qnr_key)
+        return self.affecting_all or self.affected_qnr.find(qnr_key)
 
     def check_dependency(self, answer_dict, fn=None):
         # The method supports equal, not equal and function checking only. For
@@ -297,6 +301,17 @@ class Quest_Dependency(db.Model):
         if self.check_method == self.NOT_EQUAL_TO:
             return answer_dict[self.check_against] != self.check_value
 
+    def to_dict(self, qnr_key=None):
+        dependence = {'check_method': self.check_method,
+                      'check_against': self.check_against,
+                      'check_value': self.check_value,
+                      'affecting_all': self.affecting_all,
+                      'affected_qnr': self.affected_qnr
+                      }
+        if not qnr_key or self.is_affecting(qnr_key):
+            return dependence
+        else:
+            return {}
 
 class Answers(db.Model):
     __tablename__ = 'answer'
