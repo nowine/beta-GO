@@ -1,9 +1,13 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask.ext.login import LoginManager
 
 app = Flask(__name__)
 app.config.from_object('config')
 db = SQLAlchemy(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'auth.login'
 
 # from app import views, model
 
@@ -16,3 +20,6 @@ app.register_blueprint(api, url_prefix='/api')
 
 from .admin import admin
 app.register_blueprint(admin, url_prefix='/admin')
+
+from .auth import auth
+app.register_blueprint(auth, url_prefix='/auth')

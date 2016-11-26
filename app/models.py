@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from app import db
+from app import db, login_manager
+from flask.ext.login import UserMixin
 import json
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     mobile = db.Column(db.String(15), index=True)
@@ -35,7 +36,9 @@ class User(db.Model):
         return '<User: %r>' % self.name
 
 
-
+@login_manager.user_loader
+def load_user(id):
+    return User.query.get(int(id))
 
 class Role(db.Model):
     __tablename__ = 'role'
@@ -81,30 +84,32 @@ class quest_asso(db.Model):
 class Questions(db.Model):
     """Definning the qeustionnaire structure
     This class used to store the question settings, with Question body,
-    key for searching the question, and also type of the question answers,
-    the answers column is optionnal, only useful when the type_code is
-    `SELECT_ANSWER_TYPE`, the choices/rating mapping would stored in answers field
-    in JSON format
+    key for searching the question, and also type of the question, and the labels.
+    Currently supported question types are "RADIO", "NUMERIC" and "TEXT".
+    for RADIO type of question, the label field will store a JSON format list of
+    pre-defined options, with the option name and the weight.
+    For the other 2 types, it should store the label of the input field and also
+    other attributes to built an input field on HTML
     """
     __tablename__ = 'qn'
-    SELECT_ANSWER_TYPE = 1
-    BOOLEAN_ANSWER_TYPE = 2
-    VALUE_ANSWER_TYPE = 3
+    SELECT_ANSWER_TYPE = "RADIO"
+    NUMERIC_ANSWER_TYPE = "NUMERIC"
+    TEXT_ANSWER_TYPE = "TEXT"
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String, index=True)
-    type_code = db.Column(db.Integer)
+    type_code = db.Column(db.String)
     body = db.Column(db.UnicodeText)
-    _answers = db.Column(db.UnicodeText, nullable=True)
+    _labels = db.Column(db.UnicodeText, nullable=True)
     dependencies = db.relationship('Quest_Dependency')
 
     @property
-    def answers(self):
-        d = json.loads(self._answers)
+    def labels(self):
+        d = json.loads(self._labels)
         return d
 
-    @answers.setter
-    def answers(self, dict):
-        self._answers = json.dumps(dict)
+    @labels.setter
+    def labels(self, dict):
+        self._labels = json.dumps(dict)
 
     # Assume the option-score map would be stored as json string
     def __init__(self, *args, **kwargs):
@@ -112,9 +117,9 @@ class Questions(db.Model):
 
     def __repr__(self):
         try:
-            return '<Questions: %i, %s, % s>' % (self.id, self.body, self.answers)
+            return '<Questions: %i, %s, % s>' % (self.id, self.body, self.labels)
         except TypeError:
-            return '<Questions (uncreated): %s, % s>' % (self.body, self.answers)
+            return '<Questions (uncreated): %s, % s>' % (self.body, self.labels)
 
     def to_dict(self):
         dep = []
@@ -124,7 +129,7 @@ class Questions(db.Model):
             'key': self.key,
             'body': self.body,
             'type_code': self.type_code,
-            'answers': self.answers,
+            'labels': self.labels,
             'dependencies': dep
             }
         return dic
@@ -138,7 +143,7 @@ class Questions(db.Model):
         # 但在问卷B可能会依赖于问题3，对于某一份问卷，这两个问题都会被筛选，
         # 但是问卷A中没必要检查问题3. 需要进一步设计将问卷信息一起考虑，包括
         # 正向过滤（选择当前问卷的内容），和反向过滤（去掉与本次问卷无关的内容）
-        if self.dependencies.count() == 0:
+        if self.dependencies.count(1) == 0:
             return True
         required = False
         affected = True
@@ -242,13 +247,18 @@ class Questionnaire(db.Model):
         return d
 
     def get_question(self, sequence, answer_dict=None):
-        if sequence < 1 or sequence > self.questions.count():
+        count = self.questions.count()
+        print(count)
+        if sequence < 1 or sequence > count:
             raise IndexError('Sequence out of range')
-        asso = self.questions.filter_by(
+        asso = self.questions.filter(
             quest_asso.sequence >= sequence).order_by(quest_asso.sequence).all()
         for a in asso:
-            if a.question.is_required():
-                return (a.sequence, a.question)
+            if a.question.is_required(self, answer_dict):
+                next_seq = a.sequence < count and a.sequence+1 or 0
+                return {'sequence': a.sequence,
+                        'detail': a.question.to_dict(),
+                        'next_seq': next_seq}
 
 
 class Quest_Dependency(db.Model):
@@ -313,6 +323,7 @@ class Quest_Dependency(db.Model):
         else:
             return {}
 
+
 class Answers(db.Model):
     __tablename__ = 'answer'
     id = db.Column(db.Integer, primary_key=True)
@@ -331,9 +342,9 @@ class Answers(db.Model):
     def answers(self, ans):
         self._answers = json.dumps(ans)
 
-    def add_answer(self, key, value):
+    def add_answer(self, ans_dict):
         answers = self.answers
-        answers[key]=value
+        answers.update(ans_dict)
         self.answers = answers
 
     def __init__(self, user_id, qnr_id, answers):

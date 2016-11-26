@@ -1,5 +1,6 @@
 from flask import jsonify, abort, make_response, request, url_for
 from . import api
+from .. import db
 from ..models import Questionnaire, Questions, Answers, User, quest_asso
 
 # Todo:
@@ -34,7 +35,7 @@ def questionnaire_summary(id):
     qn = Questionnaire.query.filter_by(id=id).first()
     summary = {'name': qn.name,
                'description': qn.description,
-               'questions': url_for('api.question_list')
+               'questions': url_for('api.question_list', id=id)
                 }
     return jsonify({'Questionnaire': summary})
 
@@ -50,3 +51,48 @@ def question_list(id):
                           })
         #questions[q.sequence] = q.question.to_dict()
     return jsonify({ 'Questions': questions })
+
+@api.route('/v1.0/qnr/<key>/questions', methods=['GET'])
+def getQuestions(key):
+    qnr = Questionnaire.query.filter_by(key=key).first()
+    if not qnr:
+        abort(404)
+    answers = request.args.get('answers')
+    seq = int(request.args.get('sequence'))
+ #   for attr in request.__dir__():
+ #       print("%s = %s" % (attr, request.__getattr__(attr)))
+    try:
+        return jsonify({ 'question': qnr.get_question(seq, answers) })
+    except IndexError as e:
+        print(e)
+        abort(404)
+
+@api.route('/v1.0/answer/<int:qn_id>/<int:u_id>', methods=['POST'])
+def save_answer(qn_id, u_id):
+    if not request.json or not 'answers' in request.json:
+        abort(400)
+    # Search for the answer record, if not exist, create one
+    q_answer = Answers.query.filter_by(questionnaire_id=qn_id, user_id=u_id).first()
+    if not q_answer:
+        q_answer = Answers(questionnaire_id = qn_id,
+                           user_id=u_id)
+        q_answer.answers(request.json['answers'])
+    else :
+        q_answer.add_answer(request.json.answers)
+    db.session.add(q_answer)
+    db.session.commit()
+    return 201
+
+@api.route('/v1.0/qnr/<key>/<int:user_id>/appraisal', methods=['POST'])
+def appraisal(key, user_id):
+    qnr = Questionnaire.query.filter_by(key=key).first();
+    if not qnr:
+        abort(400)
+    user = User.query.filter_by(user_id=user_id).first();
+    if not qnr:
+        abort(400)
+    answers = request.json['answers']
+    print(answers)
+    return 201
+
+
