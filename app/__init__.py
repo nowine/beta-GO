@@ -10,7 +10,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 manager = Manager(app)
-manager.add_command('db', MigraetCommand)
+manager.add_command('db', MigrateCommand)
 
 login_manager = LoginManager()
 login_manager.init_app(app)

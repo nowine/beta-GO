@@ -41,8 +41,33 @@ def load_user(id):
     return User.query.get(int(id))
 
 class Role(db.Model):
+    ADMIN = "Admin"
+    USER = "User"
+    REVIEWER = "Reviewer"
     __tablename__ = 'role'
     id = db.Column(db.Integer, primary_key=True)
+    role_type = db.Column(db.String(32))
+    _rights = db.Column(db.UnicodeText)
+
+    def __init__(self, *args, **kwargs):
+        super(Role, self).__init__(*args, **kwargs)
+
+    @property
+    def rights(self):
+        return json.load(self._rights)
+
+    @rights.setter
+    def rights(self, dictionary):
+        self._rights = json.dump(dictionary)
+
+    def is_admin(self):
+        return self.role_type==self.ADMIN
+
+    def __repr__(self):
+        try:
+            return '<Role: %i, %s, % s>' % (self.id, self.role_type, self.rights)
+        except TypeError:
+            return '<Role (uncreated): %s, % s>' % (self.role_type, self.rights)
 
 
 class quest_asso(db.Model):
@@ -136,7 +161,7 @@ class Questions(db.Model):
 
     def is_required(self, qnr, answer_dict):
         """The function will be used to check whether the question is required.
-        It will run through the dependency relation of the question record and
+        It will run throug:h the dependency relation of the question record and
         calculate until a true is received. If the no dependency record found,
         by default we can take it as true."""
         # 这个方法暂时无法满足所有情形，比如一个问题1在问卷A中依赖于问题2，
