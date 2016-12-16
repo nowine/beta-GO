@@ -273,7 +273,7 @@ class Questionnaire(db.Model):
 
     def get_question(self, sequence, answer_dict=None):
         count = self.questions.count()
-        print(count)
+        # print(count)
         if sequence < 1 or sequence > count:
             raise IndexError('Sequence out of range')
         asso = self.questions.filter(
