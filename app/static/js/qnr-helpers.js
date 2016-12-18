@@ -82,54 +82,6 @@ var QNRLoader = (function() {
     return $div;
   }
 
-  // Older version formatQuestion
-  function old_formatQuestion(question) {
-    var type_code;
-    if (question.type_code) {
-      type_code = question.type_code;
-    } else {
-      type_code = 'RADIO';
-    } //by default set the type_code as 'RADIO'
-    var $div = $("<div>", { id: question.key, class: type_code });
-    var $dt = $("<dt>", {
-      html: question.body
-    });
-    $div.append($dt);
-    var $dd = $("<dd>");
-    $div.append($dd);
-    if (type_code === 'RADIO') {
-      var $ol = $("<ol>", { "class": "list-group", "type": "A"});
-      $dd.append($ol);
-      var $li, $input;
-      for (prop in question.labels) {
-        $li = $("<li>");
-        $input = $("<input>", {
-          type: "radio",
-          name: question.key,
-          value: prop
-        });
-        $li.append($input);
-        $li.append(question.labels[prop]);
-        $ol.append($li);
-      }
-    } else if (type_code === 'NUMERIC' || type_code === 'TEXT') {
-      if ('label' in question.labels) {
-        // If there is a label provided, add it to <dd> before the input field,
-        // and then remove it from the obj. The rest object attributes can be
-        // used to create <input> field.
-        $dd.val(question.labels['label']);
-        question.labels['label'] = undefined;
-      }
-      var $input = $("<input>", {
-        type: "text",
-        name: question.key
-      });
-      $input.attr(question.labels); // quetions.labels should contain other attributes for the input.
-      $dd.append($input);
-    }
-    return $div;
-  }
-
   function formatBMI($div, question) {
     var $dt = $("<dt>", {
       html: question.body
