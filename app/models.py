@@ -3,6 +3,8 @@
 from app import db, login_manager
 from flask.ext.login import UserMixin
 import json
+import pdb
+
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -106,6 +108,39 @@ class quest_asso(db.Model):
                 )
 
 
+class Rating_Rules(db.Model):
+    __tablename__ = 'rr'
+    id = db.Column(db.Integer, primary_key=True)
+    questionnaire_id = db.Column(db.Integer, db.ForeignKey('qnr.id'), index=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('qn.id'), index=True)
+    _rules = db.Column(db.UnicodeText)
+    rule_type = db.Column(db.String(32))
+
+    def __init__(self, *args, **kwargs):
+        super(Questionnaire, self).__init__(*args, **kwargs)
+
+    @property
+    def rules(self):
+        return json.loads(self._rules)
+
+    @rules.setter
+    def rules(self, d):
+        self._rules = json.dumps(d)
+
+    def __repr__(self):
+        try:
+            return '<Question_rating: %i, %i, %i, %s, %s' % (self.id,
+                                                     self.questionnaire_id,
+                                                     self.question_id,
+                                                     self.rule_type,
+                                                     self.rules)
+        except TypeError:
+            return '<Question_rating (uncreated): %i, %i, %s, %s>' % (self.questionnaire_id,
+                                                                  self.question_id,
+                                                                  self.rule_type,
+                                                                  self.rules)
+
+
 class Questions(db.Model):
     """Definning the qeustionnaire structure
     This class used to store the question settings, with Question body,
@@ -125,12 +160,15 @@ class Questions(db.Model):
     type_code = db.Column(db.String)
     body = db.Column(db.UnicodeText)
     _labels = db.Column(db.UnicodeText, nullable=True)
+    linked_to_id = db.Column(db.Integer, db.ForeignKey('qn.id'))
+    linked_from = db.relationship('Questions', backref=db.backref('linked_to', remote_side=[id]))
     dependencies = db.relationship('Quest_Dependency')
 
     @property
     def labels(self):
-        d = json.loads(self._labels)
-        return d
+        if self._labels and self._labels != '':
+            return json.loads(self._labels)
+        return {}
 
     @labels.setter
     def labels(self, dict):
@@ -142,20 +180,31 @@ class Questions(db.Model):
 
     def __repr__(self):
         try:
-            return '<Questions: %i, %s, % s>' % (self.id, self.body, self.labels)
+            return '<Questions: %i, %s, %s>' % (self.id, self.body, self.labels)
         except TypeError:
-            return '<Questions (uncreated): %s, % s>' % (self.body, self.labels)
+            return '<Questions (uncreated): %s, %s>' % (self.body, self.labels)
 
     def to_dict(self):
         dep = []
+        # pdb.set_trace()
         for d in self.dependencies:
             dep.append(d.to_dict())
-        dic = {
-            'key': self.key,
-            'body': self.body,
-            'type_code': self.type_code,
-            'labels': self.labels,
-            'dependencies': dep
+        if self.linked_to_id:
+            dic = {
+                'key': self.key,
+                'body': self.body,
+                'type_code': self.type_code,
+                'labels': self.labels,
+                'dependencies': dep,
+                'linked_to': self.linked_to.to_dict()
+            }
+        else:
+            dic = {
+                'key': self.key,
+                'body': self.body,
+                'type_code': self.type_code,
+                'labels': self.labels,
+                'dependencies': dep
             }
         return dic
 
@@ -250,8 +299,11 @@ class Questionnaire(db.Model):
         # remove the question from questionnaire, should support removed by sequence, or removed by question_id?
         if self.has_question(quest.id):
             asso = self.questions.filter(quest_asso.question_id == quest.id).first()
+            print(asso)
             self.questions.remove(asso)
+            self.shift_sequence(asso.sequenc+1, -1)
             return self
+        return None
 
     def insert_question(self, sequence, quest):
         # Insert quetion to a certain place, rest of question sequence would increase automatically
@@ -361,7 +413,9 @@ class Answers(db.Model):
 
     @property
     def answers(self):
-        return json.loads(self._answers)
+        if self._answers and self._answers != '':
+            return json.loads(self._answers)
+        return {}
 
     @answers.setter
     def answers(self, ans):
