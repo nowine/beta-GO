@@ -73,6 +73,9 @@ class Role(db.Model):
 
 
 class quest_asso(db.Model):
+    MAP='M'
+    RANGE='R'
+    NA = 'N'
     # Define Association table to link up the questionnair and its questions.
     __tablename__ = 'q_asso'
     questionnaire_id = db.Column(db.Integer, db.ForeignKey('qnr.id'),
@@ -80,6 +83,19 @@ class quest_asso(db.Model):
     question_id = db.Column(db.Integer, db.ForeignKey('qn.id'),
                             primary_key=True, index=True)
     sequence = db.Column(db.Integer, index=True)
+    rule_type = db.Column(db.String(32))
+    '''
+    The _rules keeps a JSON format object for saving the detail rating logic.
+    According to the `rule_type` field, the data structure will be a little different.
+        if `rule_type` is MAP:
+            the rules will be a map, with user answer code as key, and value is the weight
+            this suitable for RADIO type answer
+        if `rule_type` is RANGE:
+            the rules will be a map, with user weight as key, and value is a list[2].
+            in the list, list[0] is starting range, and list[1] is the ending range. When
+            user input answer fall into the range,
+    '''
+    _rules = db.Column(db.UnicodeText)
     questionnaire = db.relationship('Questionnaire',
                                     backref=db.backref('questions',
                                                        lazy='dynamic',
@@ -96,49 +112,49 @@ class quest_asso(db.Model):
 
     def __repr__(self):
         try:
-            return '<quest_asso: %i, %i, %i\n%s\n%s>' % (
+            return '<quest_asso: %i, %i, %i\n%s\n%s\n%s\n%s>' % (
                 self.questionnaire_id,
                 self.question_id,
                 self.sequence,
                 self.questionnaire,
-                self.question)
+                self.question,
+                self.rule_type,
+                self.rules
+            )
         except TypeError:
-            return '<quest_asso (uncreated): %i\n%s\n%s>' % (
-                self.sequence, self.questionnaire, self.question
-                )
-
-
-class Rating_Rules(db.Model):
-    __tablename__ = 'rr'
-    id = db.Column(db.Integer, primary_key=True)
-    questionnaire_id = db.Column(db.Integer, db.ForeignKey('qnr.id'), index=True)
-    question_id = db.Column(db.Integer, db.ForeignKey('qn.id'), index=True)
-    _rules = db.Column(db.UnicodeText)
-    rule_type = db.Column(db.String(32))
-
-    def __init__(self, *args, **kwargs):
-        super(Questionnaire, self).__init__(*args, **kwargs)
+            return '<quest_asso (uncreated): %i\n%s\n%s\n%s\n%s>' % (
+                self.sequence, self.questionnaire, self.question,
+                self.rule_type, self.rules
+            )
 
     @property
     def rules(self):
-        return json.loads(self._rules)
+        if self._rules and self._rules != '':
+            return json.loads(self._rules)
+        else:
+            return {}
 
     @rules.setter
     def rules(self, d):
         self._rules = json.dumps(d)
 
-    def __repr__(self):
-        try:
-            return '<Question_rating: %i, %i, %i, %s, %s' % (self.id,
-                                                     self.questionnaire_id,
-                                                     self.question_id,
-                                                     self.rule_type,
-                                                     self.rules)
-        except TypeError:
-            return '<Question_rating (uncreated): %i, %i, %s, %s>' % (self.questionnaire_id,
-                                                                  self.question_id,
-                                                                  self.rule_type,
-                                                                  self.rules)
+    def calculate(self, answer_value):
+        if self.rule_type == self.RANGE:
+            for weight, answer_range in self.rules.items():
+                if len(answer_range) > 1:
+                    if answer_value >= answer_range[0] and answer_value < answer_range[1]:
+                        return int(weight)
+                else:
+                    if answer_value >= answer_range[0]:
+                        return int(weight)
+            else:
+            # if no match
+                return 0
+        if self.rule_type == self.MAP:
+            if answer_value in self.rules:
+                return self.rules[answer_value]
+            else:
+                return 0
 
 
 class Questions(db.Model):
@@ -162,7 +178,7 @@ class Questions(db.Model):
     _labels = db.Column(db.UnicodeText, nullable=True)
     linked_to_id = db.Column(db.Integer, db.ForeignKey('qn.id'))
     linked_from = db.relationship('Questions', backref=db.backref('linked_to', remote_side=[id]))
-    dependencies = db.relationship('Quest_Dependency')
+    dependencies = db.relationship('Quest_Dependency', backref=db.backref('question'))
 
     @property
     def labels(self):
@@ -171,8 +187,8 @@ class Questions(db.Model):
         return {}
 
     @labels.setter
-    def labels(self, dict):
-        self._labels = json.dumps(dict)
+    def labels(self, dic):
+        self._labels = json.dumps(dic)
 
     # Assume the option-score map would be stored as json string
     def __init__(self, *args, **kwargs):
@@ -217,7 +233,7 @@ class Questions(db.Model):
         # 但在问卷B可能会依赖于问题3，对于某一份问卷，这两个问题都会被筛选，
         # 但是问卷A中没必要检查问题3. 需要进一步设计将问卷信息一起考虑，包括
         # 正向过滤（选择当前问卷的内容），和反向过滤（去掉与本次问卷无关的内容）
-        if self.dependencies.count(1) == 0:
+        if len(self.dependencies) == 0:
             return True
         required = False
         affected = True
@@ -313,6 +329,7 @@ class Questionnaire(db.Model):
         if self.shift_sequence(sequence, 1) is not None:
             asso = quest_asso()
             asso.question = quest
+            asso.sequence = sequence
             self.questions.append(asso)
             return self
 
@@ -336,6 +353,15 @@ class Questionnaire(db.Model):
                 return {'sequence': a.sequence,
                         'detail': a.question.to_dict(),
                         'next_seq': next_seq}
+
+    def get_rating(self, answer_dict):
+        rating = 0
+        rating_list = self.questions.filter(quest_asso.rule_type != quest_asso.NA).all()
+        for asso in rating_list:
+            if asso.question.key in answer_dict:
+                print('Question Key: %s, Rating: %i' % (asso.question.key, asso.calculate(answer_dict[asso.question.key])))
+                rating = rating + asso.calculate(answer_dict[asso.question.key])
+        return rating
 
 
 class Quest_Dependency(db.Model):

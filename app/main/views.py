@@ -5,6 +5,8 @@ from ..models import Questionnaire, Questions, User
 from app import db
 from app import login_manager
 
+import json
+
 @main_pages.route('/')
 @main_pages.route('/index')
 @main_pages.route('/index/<int:user_id>')
@@ -12,20 +14,20 @@ def index(user_id=0):
     return render_template('index.html')
 
 #@main_pages.route('/questionnaire/<key>', methods=['GET', 'POST'])
-@main_pages.route('/questions/<key>', methods=['GET', 'POST'])
-def load_questions(key):
-    qn = Questionnaire.query.filter_by(key=key).first()
-    if qn:
-        if request.method == 'GET':
-            #return render_template('questionnaire.html', qn=qn)
-            return render_template('questions.html', qn=qn)
-        if request.method == 'POST':
-            print(request.form)
-            score=0
-            for (key, value) in request.form.items():
-                score = score + int(value)
-            return render_template('result.html', score=score)
-    return redirect(url_for('main_pages.index'))
+#@main_pages.route('/questions/<key>', methods=['GET', 'POST'])
+#def load_questions(key):
+#    qn = Questionnaire.query.filter_by(key=key).first()
+#    if qn:
+#        if request.method == 'GET':
+#            #return render_template('questionnaire.html', qn=qn)
+#            return render_template('questions.html', qn=qn)
+#        if request.method == 'POST':
+#            print(request.form)
+#            score=0
+#            for (key, value) in request.form.items():
+#                score = score + int(value)
+#            return render_template('result.html', score=score)
+#    return redirect(url_for('main_pages.index'))
 
 @main_pages.route('/qlist', methods=['GET'])
 def qnr_list():
@@ -51,3 +53,19 @@ def load_qnr(key):
                 return redirect(url_for('main_pages.index'))
     flash('该问卷不存在，请重新选择问卷')
     return redirect(url_for('main_pages.index'))
+
+@main_pages.route('/result/<key>', methods=['POST'])
+def get_result(key):
+    print(request)
+    if not request.form or not 'answers' in request.form:
+        abort(400)
+    print(request.form)
+    answers = request.form['answers']
+    print(answers)
+    answers = json.loads(answers)
+    qnr = Questionnaire.query.filter_by(key=key).first()
+    if not qnr:
+        abort(400)
+    rating = qnr.get_rating(answers)
+    answers['RATE'] = rating
+    return render_template('result_page.html', qnr=qnr, rating=rating)

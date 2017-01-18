@@ -2,6 +2,8 @@ from flask import jsonify, abort, make_response, request, url_for
 from . import api
 from .. import db
 from ..models import Questionnaire, Questions, Answers, User, quest_asso
+import json
+import pdb
 
 # Todo:
 # 1. Service to append a question into qustionnaire.
@@ -57,8 +59,11 @@ def getQuestions(key):
     qnr = Questionnaire.query.filter_by(key=key).first()
     if not qnr:
         abort(404)
-    answers = request.args.get('answers')
+    answers = json.loads(request.args.get('answers'))
+    print(answers)
     seq = int(request.args.get('sequence'))
+    print(seq)
+    # pdb.set_trace()
  #   for attr in request.__dir__():
  #       print("%s = %s" % (attr, request.__getattr__(attr)))
     try:

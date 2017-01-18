@@ -118,6 +118,7 @@ var QNRLoader = (function() {
 
   function init($question, $button) {
     _answers = {}; //blank object
+    //_answers = new Map();
     _next = 1;
     _questionNote = $question;
     _button = $button;
@@ -138,7 +139,8 @@ var QNRLoader = (function() {
           showError("请选择一个选项，然后继续。");
           return false;
         }
-        _answers[$sub_div.id] = $input.val();
+        _answers[$sub_div[0].id] = $input.val();
+        //_answers.set($sub_div[0].id, $input.val());
       } else {
         $input = $sub_div.find("input[type=text]");
         inputValue = $input.val();
@@ -154,8 +156,10 @@ var QNRLoader = (function() {
           }
         }
         _answers[$sub_div[0].id] = inputValue;
+        //_answers.set($sub_div[0].id, inputValue);
       }
     }
+    //alert(JSON.stringify(_answers));
     return true;
   }
 
@@ -206,9 +210,10 @@ var QNRLoader = (function() {
     }
     height = parseInt(height, 10);
     weight = parseInt(weight, 10);
-    var weight = weight/100;
-    var bmi = height / weight / weight;
+    var height = height/100;
+    var bmi = weight / height / height;
     _answers[BMI] = bmi;
+    //_answers.set(BMI, bmi);
     return true;
   }
 
@@ -249,7 +254,7 @@ var QNRLoader = (function() {
       url: url,
       data: {
         sequence: _next,
-        answers: _answers
+        answers: JSON.stringify(_answers)
       },
       type: 'GET',
       dataType: 'json',
@@ -271,17 +276,20 @@ var QNRLoader = (function() {
   }
 
   function makeApprasal(url) {
-    var ajaxSetting = {
-      url: url,
-      data: JSON.stringify({ answers: _answers }),
-      contentType: "application/json",
-      type: "POST",
-    }
-    $.ajax(ajaxSetting).done(function (data) {
-      _questionNote.empty();
-      _button.val("返回");
-      alert('Success');
+    $form = $("<form>", {
+      id: 'hidden_form',
+      action: url,
+      method: 'post',
+      name: 'get_result'
     });
+    $answers = $('<input>', {
+      'type': 'hidden',
+      name: 'answers',
+      value: JSON.stringify(_answers)
+    });
+    _questionNote.append($form);
+    $form.append($answers);
+    $form.submit();
   }
 
   return {
