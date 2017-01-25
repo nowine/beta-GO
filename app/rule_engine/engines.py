@@ -91,7 +91,9 @@ class AdultEngine(object):
                 answers[key] = 0 if type == 'NUMERIC' else ''
         print(answers)
         if answers['AGE']>18:
-            if (answers['空腹血糖']>=6.1 and answers['空腹血糖']<7.0) and (answers['餐后血糖']<11 and answers['餐后血糖']>0):
+            if answers['空腹血糖']>=7.0 or answers['餐后血糖']>=11.1:
+                result_set.add('您已经患有糖尿病的可能性很大，建议尽快到正规医院内科或内分泌科就诊')
+            elif (answers['空腹血糖']>=6.1 and answers['空腹血糖']<7.0) and (answers['餐后血糖']<11.1 and answers['餐后血糖']>0):
                 result_set.add('您是糖尿病前期患者，每年有1.5\%-10.0\%的糖尿病前期患者进展为2型糖尿病')
             elif answers['RATE'] >= 25:
                 result_set.add('您是糖尿病高风险人群，建议至正规医院进行口服葡萄糖耐量（OGTT）检查')
