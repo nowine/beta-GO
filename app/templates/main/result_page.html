@@ -1,0 +1,15 @@
+<!-- extend from base.html -->
+{% extends "base.html" %}
+{% block content %}
+<div>
+<h3 small>{{ qnr.name }}</h3 small>
+<div id='results'>
+<p>您的评测结果如下：</p>
+<ul>
+  {% for text in result %}
+    <li>{{ text }}</li>
+  {% endfor %}
+</ul>
+</div>
+</div>
+{% endblock %}

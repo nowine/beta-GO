@@ -459,3 +459,57 @@ class Answers(db.Model):
             self.answers = answers
         else:
             self.answers = {}
+
+
+class ResultCode(db.Model):
+    __tablename__ = 'result_code'
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.UnicodeText)
+
+    def __init__(self, *args, **kwargs):
+        super(ResultCode, self).__init__(*args, **kwargs)
+
+    def __repr__(self):
+        try:
+            return '<ResultCode: %i, %s>' % (self.id, self.text)
+        except TypeError:
+            return '<ResultCode (uncreated): %s>' % (self.text)
+
+
+class Rules(db.Model):
+    __tablename__ = 'rules'
+    id = db.Column(db.Integer, primary_key=True)
+    questionnaire_id = db.Column(db.Integer, db.ForeignKey('qnr.id'))
+    question_id = db.Column(db.Integer, db.ForeignKey('qn.id'))
+    result_code_id = db.Column(db.Integer, db.ForeignKey('result_code.id'))
+    check_method = db.Column(db.String(2))
+    target_value = db.Column(db.String(32))
+    questionnaire = db.relationship('Questionnaire', backref=db.backref('rules',
+                                                      lazy='dynamic'))
+    question = db.relationship('Questions', backref=db.backref('rules',
+                                                      lazy='dynamic'))
+    result_code = db.relationship('ResultCode', backref=db.backref('rules',
+                                                      lazy='dynamic'))
+
+    def __init__(self, *args, **kwargs):
+        super(Rules, self).__init__(*args, **kwargs)
+
+    def __repr__(self):
+        try:
+            s = '<Rules: \n id = {id:d}\n check_method = {check_method}\n'
+            'target_value = {target_value!r}\n result_code = {resultcode!r}\n'
+            'questionnaire = {questionnaire!r}\n question = {question!r}\n'
+            return s.format(id=self.id, check_method=self.check_method,
+                            target_value=self.target_value,
+                            result_code=self.result_code,
+                            questionnnaire=self.questionnaire,
+                            question=self.question)
+        except TypeError:
+            s = '<Rules: \n check_method = {check_method}\n'
+            'target_value = {target_value!r}\n result_code = {resultcode!r}\n'
+            'questionnaire = {questionnaire!r}\n question = {question!r}\n'
+            return s.format(check_method=self.check_method,
+                            target_value=self.target_value,
+                            result_code=self.result_code,
+                            questionnnaire=self.questionnaire,
+                            question=self.question)

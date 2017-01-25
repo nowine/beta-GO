@@ -1,9 +1,10 @@
-from flask import render_template, url_for, request, redirect, flash, g
+from flask import render_template, url_for, request, redirect, flash, g, abort
 from flask.ext.login import login_required, current_user
 from . import main_pages
 from ..models import Questionnaire, Questions, User
 from app import db
 from app import login_manager
+from app.rule_engine import rules_map
 
 import json
 
@@ -68,4 +69,7 @@ def get_result(key):
         abort(400)
     rating = qnr.get_rating(answers)
     answers['RATE'] = rating
-    return render_template('result_page.html', qnr=qnr, rating=rating)
+    result = rules_map[qnr.key].check_rules(answers)
+    print(len(result))
+    print(result)
+    return render_template('result_page.html', qnr=qnr, result=result)

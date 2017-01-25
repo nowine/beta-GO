@@ -35,8 +35,10 @@ from .auth import auth
 app.register_blueprint(auth, url_prefix='/auth')
 
 from .administration import question_view, questionnaire_view,q_dep_view, q_asso_view
+from .administration import rules_view, result_code_view
 admin.add_view(question_view)
 admin.add_view(questionnaire_view)
 admin.add_view(q_dep_view)
 admin.add_view(q_asso_view)
-
+admin.add_view(rules_view)
+admin.add_view(result_code_view)

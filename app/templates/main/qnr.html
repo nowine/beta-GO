@@ -1,0 +1,42 @@
+<!-- extend from base.html -->
+{% extends "base.html" %}
+{% block content %}
+<h3 small>{{ qnr.name }}</h3 small>
+<p>{{ qnr.description }}</p>
+<div id="question">
+</div>
+<br>
+<input id="actionButton" type="button" value="开始"></input>
+{% endblock %}
+{% block js_def %}
+<script src="../../static/js/qnr-helpers.js"></script>
+<script>
+  //$(document).on("ready", function () {
+    var $question = $('#question');
+    var $button = $('#actionButton');
+    QNRLoader.init($question, $button);
+    var qnrPath = "{{ url_for('api.getQuestions', key=qnr.key) }}";
+    $button.on("click", function () {
+      var status = $button.val();
+      if (status != "返回") {
+        if (status == "开始") {
+          QNRLoader.getQuestion(qnrPath);
+        } else {
+          if (QNRLoader.validateAnswer()) {
+//            QNRLoader.addAnswer();
+            if (status == "继续") {
+              QNRLoader.getQuestion(qnrPath);
+            } else {
+              // button value is "提交", return to index page
+              QNRLoader.makeApprasal("{{ url_for('main_pages.get_result', key=qnr.key) }}");
+            }
+          }
+        }
+      } else {
+        // button value is "返回", return to index page
+        window.location.href = "{{ url_for('main_pages.index') }}"
+      }
+    });
+  //});
+</script>
+{% endblock %}
