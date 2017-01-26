@@ -2,6 +2,7 @@
 
 from app import db, login_manager
 from flask.ext.login import UserMixin
+from datetime import datetime
 import json
 import pdb
 
@@ -42,6 +43,7 @@ class User(db.Model, UserMixin):
 def load_user(id):
     return User.query.get(int(id))
 
+
 class Role(db.Model):
     ADMIN = "Admin"
     USER = "User"
@@ -56,11 +58,11 @@ class Role(db.Model):
 
     @property
     def rights(self):
-        return json.load(self._rights)
+        return json.loads(self._rights)
 
     @rights.setter
     def rights(self, dictionary):
-        self._rights = json.dump(dictionary)
+        self._rights = json.dumps(dictionary)
 
     def is_admin(self):
         return self.role_type==self.ADMIN
@@ -434,8 +436,10 @@ class Answers(db.Model):
     questionnaire_id = db.Column(db.Integer, db.ForeignKey('qnr.id'), index=True)
     user = db.relationship('User', backref=db.backref('answers',
                                                       lazy='dynamic'))
+    questionnaire = db.relationship('Questionnaire')
+    answered_at = db.Column(db.DateTime)
     _answers = db.Column(db.UnicodeText)
-    result = db.Column(db.UnicodeText)
+    _result = db.Column(db.UnicodeText)
 
     @property
     def answers(self):
@@ -452,13 +456,39 @@ class Answers(db.Model):
         answers.update(ans_dict)
         self.answers = answers
 
-    def __init__(self, user_id, qnr_id, answers):
+    @property
+    def result(self):
+        if self._result and self._result != '':
+            return json.loads(self._result)
+        return {}
+
+    @result.setter
+    def result(self, res):
+        self._result = json.dumps(res)
+
+
+    def __init__(self, user_id, qnr_id, answers, result):
         self.user_id = user_id
         self.questionnaire_id = qnr_id
+
         if answers:
             self.answers = answers
         else:
             self.answers = {}
+
+        self.result = result
+        now = datetime.utcnow()
+        self.answered_at = now
+
+    def __repr__(self):
+        try:
+            return '<Answers: \n  id=%i,\n  user=%s,\n  questionnaire=%s,\n  answers=%s,\n  result=%s,\n  answered_at=%s>' % (
+                self.id, self.user, self.questionnaire, self.answers, self.result, self.answered_at
+            )
+        except TypeError:
+            return '<Answers(Not Created): \n  user=%s,\n  questionnaire=%s,\n  answers=%s,\n  result=%s,\n  answered_at=%s>' % (
+                self.user, self.questionnaire, self.answers, self.result, self.answered_at
+            )
 
 
 class ResultCode(db.Model):

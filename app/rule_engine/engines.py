@@ -110,7 +110,8 @@ class AdultEngine(object):
                     result_set.add('您除了年龄≥40岁外，无其他糖尿病危险因素，但根据中国2型糖尿病防治指南，依然建议您从40岁开始进行糖尿病筛查，首次筛查结果正常者，建议至少每3年重复筛查一次')
             else:
                 result_set.add('根据您的回答，暂时无糖尿病危险因素。')
-        return result_set
+        result = list(result_set)
+        return result
 
 
 class ChildEngine(object):

@@ -1,0 +1,11 @@
+Wtforms
+Flask
+Flask-SQLAlchemy
+Flask-Bootstrap
+Flask-Login
+Flask-Script
+Flask-Migrate
+Flask-Wtf
+Flask-Admin
+
+
